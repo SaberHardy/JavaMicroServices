@@ -1,4 +1,4 @@
-package com.services.movie_catalog_service;
+package com.services.movie_catalog_service.models;
 
 public class CatalogItem {
     //    private String id;
