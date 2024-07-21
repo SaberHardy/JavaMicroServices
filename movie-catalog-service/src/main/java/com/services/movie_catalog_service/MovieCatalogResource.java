@@ -13,8 +13,6 @@ public class MovieCatalogResource {
 
     @RequestMapping("/{userId}")
     public List<CatalogItem> getCatalog(@PathVariable String userId) {
-        return Collections.singletonList(
-                new CatalogItem("Transformers", "Action", 5)
-        );
+        return Collections.singletonList(new CatalogItem("Transformers", "Action", 5));
     }
 }
