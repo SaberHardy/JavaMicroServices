@@ -1,4 +1,4 @@
-package com.services.movie_info_service;
+package com.services.movie_info_service.models;
 
 public class MovieModel {
     public MovieModel(String movieId, String name) {

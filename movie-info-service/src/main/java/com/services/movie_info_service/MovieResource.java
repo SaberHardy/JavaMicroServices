@@ -1,5 +1,6 @@
 package com.services.movie_info_service;
 
+import com.services.movie_info_service.models.MovieModel;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
