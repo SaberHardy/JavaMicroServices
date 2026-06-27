@@ -4,6 +4,8 @@ import com.services.movie_catalog_service.models.CatalogItem;
 import com.services.movie_catalog_service.models.MovieModel;
 import com.services.movie_catalog_service.models.Rating;
 import com.services.movie_catalog_service.models.UserRating;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/catalog")
 public class MovieCatalogResource {
 
+    private static final Logger logger = LoggerFactory.getLogger(MovieCatalogResource.class);
+
     @Autowired
     private RestTemplate restTemplate;
 
@@ -29,35 +33,56 @@ public class MovieCatalogResource {
 
     @RequestMapping("/{userId}")
     public List<CatalogItem> getCatalog(@PathVariable String userId) {
+        long startTime = System.currentTimeMillis();
+        logger.info("========== START: Incoming request to getCatalog ==========");
+        logger.info("Request received for userId: {}", userId);
 
-        // RestTemplate restTemplate = new RestTemplate();
-        UserRating userRating = restTemplate.getForObject("http://localhost:8083/ratingsData/users/" + userId, UserRating.class);
+        try {
+            // Step 1: Fetch ratings from Ratings Data Service
+            logger.info("Fetching ratings from Ratings Data Service for userId: {}", userId);
+            UserRating userRating = restTemplate.getForObject("http://localhost:8083/ratingsData/users/" + userId, UserRating.class);
+            
+            if (userRating == null || userRating.getUserRating() == null) {
+                logger.warn("No ratings found for userId: {}", userId);
+                logger.info("========== END: Request completed (no ratings) ==========");
+                return Collections.emptyList();
+            }
+            
+            logger.info("Successfully fetched {} ratings from Ratings Data Service for userId: {}", userRating.getUserRating().size(), userId);
+            logger.debug("Ratings data: {}", userRating.getUserRating());
 
+            // Step 2: Fetch movie info for each rated movie
+            logger.info("Starting to fetch movie info for {} rated movies", userRating.getUserRating().size());
+            
+            List<CatalogItem> catalogItems = userRating.getUserRating().stream().map(rating -> {
+                try {
+                    logger.info("Fetching movie info from Movie Info Service for movieId: {}", rating.getMovieId());
+                    MovieModel movie = restTemplate.getForObject("http://localhost:8082/movies/" + rating.getMovieId(), MovieModel.class);
+                    
+                    if (movie == null) {
+                        logger.warn("Movie not found for movieId: {}", rating.getMovieId());
+                        return null;
+                    }
+                    
+                    logger.info("Successfully fetched movie info for movieId: {} - movieName: {}", rating.getMovieId(), movie.getName());
+                    return new CatalogItem(movie.getName(), "Small description", rating.getRating());
+                } catch (Exception e) {
+                    logger.error("ERROR: Failed to fetch movie info for movieId: {} - Exception: {}", rating.getMovieId(), e.getMessage(), e);
+                    return null;
+                }
+            }).filter(item -> item != null).collect(Collectors.toList());
 
-        // use web client
-        // get all rated movies ids
-//        List<Rating> ratings = Arrays.asList(new Rating("1234", 4), new Rating("5678", 3));
-
-        return userRating.getUserRating().stream().map(rating -> {
-            // for each movie id, get details from movie info service
-             MovieModel movie = restTemplate.getForObject("http://localhost:8082/movies/" + rating.getMovieId(), MovieModel.class);
-
-            // This will give use an instance of MovieModel
-            // MovieModel movie = webClientBuilder.build()
-            // .get()
-            //        .uri("http://localhost:8082/movies/" + rating.getMovieId())
-            //.retrieve()
-            //// This line means whatever the response is, it will be converted to MovieModel class,
-            // And mono is a type of response, so it will be converted to Mono<MovieModel>
-            //.bodyToMono(MovieModel.class)
-            // This will wait for the response to be received, and this block() will wait until it is received
-            // .block();
-
-            // put them all in a list together
-            return new CatalogItem(movie.getName(), "Small description", rating.getRating());
-        }).collect(Collectors.toList());
-
-
-
+            long endTime = System.currentTimeMillis();
+            logger.info("Successfully aggregated catalog with {} items for userId: {} in {}ms", catalogItems.size(), userId, (endTime - startTime));
+            logger.info("========== END: Request completed successfully ==========");
+            
+            return catalogItems;
+            
+        } catch (Exception e) {
+            long endTime = System.currentTimeMillis();
+            logger.error("========== ERROR: Failed to get catalog for userId: {} - Exception: {} ==========", userId, e.getMessage(), e);
+            logger.error("Request failed after {}ms", (endTime - startTime));
+            throw e;
+        }
     }
 }
