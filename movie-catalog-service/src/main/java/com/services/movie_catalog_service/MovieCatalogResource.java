@@ -31,7 +31,7 @@ public class MovieCatalogResource {
     public List<CatalogItem> getCatalog(@PathVariable String userId) {
 
         // RestTemplate restTemplate = new RestTemplate();
-        UserRating userRating = restTemplate.getForObject("http://localhost:8083/ratingsdata/users/" + userId, UserRating.class);
+        UserRating userRating = restTemplate.getForObject("http://localhost:8083/ratingsData/users/" + userId, UserRating.class);
 
 
         // use web client
