@@ -1,2 +1,6 @@
 .idea
 .DS_Store
+movie-catalog-service/target/*
+movie-info-service/target/*
+movie-data-service/target/*
+ratings-data-service/target/*
